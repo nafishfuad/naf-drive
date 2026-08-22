@@ -13,7 +13,7 @@
   "dependencies": {
     "@naf/shared": "workspace:*",
     "@scure/bip39": "^1.0.4",
-    "@supabase/ssr": "^0.6.1",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.47.10",
     "clsx": "^2.1.1",
     "hash-wasm": "^4.11.0",
