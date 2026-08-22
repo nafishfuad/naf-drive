@@ -1,0 +1,32 @@
+# Multi-stage build for the NestJS API (runs on Oracle ARM VM in production).
+# Build from repo root:  docker build -f infra/Dockerfile.api -t naf-api .
+
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/shared/package.json packages/shared/
+COPY packages/providers/package.json packages/providers/
+RUN pnpm install --frozen-lockfile --filter @naf/api...
+
+FROM deps AS build
+COPY tsconfig.base.json turbo.json ./
+COPY packages/shared packages/shared
+COPY packages/providers packages/providers
+COPY apps/api apps/api
+RUN pnpm --filter @naf/shared build && pnpm --filter @naf/providers build \
+  && pnpm --filter @naf/api build
+
+FROM node:22-alpine AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /repo/node_modules ./node_modules
+COPY --from=build /repo/apps/api/dist ./dist
+COPY --from=build /repo/apps/api/prisma ./prisma
+COPY --from=build /repo/apps/api/node_modules/@prisma ./node_modules/@prisma
+COPY --from=build /repo/packages ./packages
+EXPOSE 3001
+CMD ["node", "dist/src/main.js"]

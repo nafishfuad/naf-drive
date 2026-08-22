@@ -1,0 +1,236 @@
+// NAF Drive metadata database.
+// FILE BYTES NEVER LIVE HERE — only tree structure and provider pointers.
+// See PLAN.md §4 for the authoritative model description.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+/// STANDARD = plain files in provider drives (default)
+/// VAULT    = opt-in client-side encryption (passphrase + recovery phrase)
+enum StorageMode {
+  STANDARD
+  VAULT
+}
+
+enum ProviderTypeEnum {
+  GOOGLE_DRIVE
+  DROPBOX
+  ONEDRIVE
+  PCLOUD
+  BOX
+}
+
+enum ConnectionStatus {
+  OK
+  EXPIRED
+  ERROR
+}
+
+enum NodeTypeEnum {
+  FILE
+  FOLDER
+}
+
+enum NodeStatus {
+  STAGED /// upload in progress; not visible yet
+  ACTIVE
+  TRASHED
+  DELETED /// purged
+}
+
+enum LocationStatus {
+  PENDING
+  COMPLETE
+  FAILED
+}
+
+enum UploadSessionStatus {
+  ACTIVE
+  COMPLETING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supabaseUserId  String      @unique @db.Uuid
+  email           String?     
+  displayName     String?
+  storageMode     StorageMode @default(STANDARD)
+  role            Role        @default(USER)
+
+  // Vault key material — always ciphertext/wrapped, produced client-side.
+  wrappedWithPassphrase Bytes?
+  wrappedWithPhrase     Bytes?
+  phraseCheckSha256     String? @db.Char(64)
+  vaultInitializedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerConnections ProviderConnection[]
+  nodes               Node[]
+  shares              Share[]
+  uploadSessions      UploadSession[]
+  activityLog         ActivityLog[]
+  usageDaily          UsageDaily[]
+}
+
+model ProviderConnection {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String             @db.Uuid
+  providerType ProviderTypeEnum
+  displayName  String
+  /// AES-256-GCM envelope output over the OAuth token JSON. Never plaintext.
+  encryptedTokensJson Bytes
+
+  /// User-set usage cap for NAF Drive on this account (1–100).
+  capPct   Int              @default(100)
+  status   ConnectionStatus @default(OK)
+
+  quotaTotalBytes BigInt?
+  quotaUsedBytes  BigInt?
+  lastSyncedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileLocations   FileLocation[]
+  uploadSessions  UploadSession[]
+
+  @@index([userId])
+}
+
+model Node {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId String? @db.Uuid
+  ownerId  String @db.Uuid
+
+  type NodeTypeEnum
+  name String
+
+  sizeBytes BigInt?
+  mimeType  String?
+
+  status    NodeStatus @default(STAGED)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent    Node?           @relation("NodeTree", fields: [parentId], references: [id])
+  children  Node[]          @relation("NodeTree")
+  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  locations FileLocation[]
+  uploadSessions UploadSession[]
+  shares         Share[]
+
+  @@index([ownerId, parentId, status])
+}
+
+model FileLocation {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nodeId       String @db.Uuid
+  connectionId String @db.Uuid
+
+  remoteFileId String
+  remotePath   String?
+
+  sizeBytes        BigInt?
+  sha256Ciphertext String? @db.Char(64)
+  chunkIndex       Int     @default(0)
+
+  status LocationStatus @default(PENDING)
+  createdAt DateTime @default(now())
+
+  node       Node               @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+}
+
+model UploadSession {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String @db.Uuid
+  nodeId       String @db.Uuid
+  connectionId String @db.Uuid
+
+  targetRemoteFolder String?
+  totalBytes         BigInt
+  chunkSizeBytes     Int
+  receivedChunks     Json @default("[]")
+
+  status    UploadSessionStatus @default(ACTIVE)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node       Node               @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Share {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nodeId    String @db.Uuid
+  ownerId   String @db.Uuid
+
+  tokenHash String @unique @db.Char(64) /// sha256 of share token; raw token never stored
+  passwordHash String?
+
+  expiresAt     DateTime?
+  maxDownloads  Int?
+  downloadCount Int       @default(0)
+  revokedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+}
+
+model ActivityLog {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  action String
+  metaJson Json?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model UsageDaily {
+  id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String   @db.Uuid
+  date   DateTime @db.Date
+
+  uploadBytes   BigInt @default(0)
+  downloadBytes BigInt @default(0)
+  apiRequests   Int    @default(0)
+  storageBytes  BigInt @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}

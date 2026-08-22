@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: naf-postgres
+    environment:
+      POSTGRES_USER: naf
+      POSTGRES_PASSWORD: naf_dev
+      POSTGRES_DB: naf_drive
+    ports:
+      - "54322:5432"
+    volumes:
+      - naf-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U naf -d naf_drive"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: naf-redis
+    ports:
+      - "54323:6379"
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  naf-pgdata:

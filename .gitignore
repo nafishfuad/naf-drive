@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Env & secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Tooling caches
+.turbo/
+coverage/
+.eslintcache
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Prisma generated client (inside node_modules, but be explicit for safety)
+**/generated/prisma/

@@ -1,0 +1,73 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-api.yml'
+
+concurrency:
+  group: deploy-api-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & ship to Oracle VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — skip cleanly until VM secrets exist
+        id: guard
+        env:
+          VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          VM_SSH_KEY: ${{ secrets.ORACLE_VM_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$VM_HOST" ] || [ -z "$VM_SSH_KEY" ]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ORACLE_VM_* secrets not set yet — skipping deploy (job stays green)"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        if: steps.guard.outputs.deploy == 'true'
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.ORACLE_VM_HOST }}
+          username: ${{ secrets.ORACLE_VM_USER }}
+          key: ${{ secrets.ORACLE_VM_SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/naf-drive
+            git pull --ff-only origin main
+
+            # Apply DB migrations first (backward-compatible expand-contract policy).
+            docker run --rm --env-file /opt/naf-drive/.env.api \
+              -v "$PWD/apps/api/prisma:/workspace/prisma" \
+              -w /workspace node:22-alpine \
+              npx -y prisma@6.3.0 migrate deploy --schema ./prisma/schema.prisma
+
+            # Rebuild and swap container.
+            docker build -f infra/Dockerfile.api -t naf-api:latest .
+            docker rm -f naf-api 2>/dev/null || true
+            docker run -d --name naf-api \
+              --restart unless-stopped \
+              --env-file /opt/naf-drive/.env.api \
+              -p 127.0.0.1:3001:3001 \
+              naf-api:latest
+
+            # Smoke gate: /health must answer within 30s or the deploy fails loudly.
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3001/health > /dev/null; then
+                echo "health ok"; exit 0
+              fi
+              sleep 1
+            done
+            echo "::error::API failed /health after deploy"
+            exit 1
