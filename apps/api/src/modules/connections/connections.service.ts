@@ -102,8 +102,11 @@ export class ConnectionsService {
         `OAuth callback failed (${providerId}) stage=${reasonCode} detail=${detail ?? 'n/a'}`,
         err instanceof Error ? err.stack : String(err),
       );
+      // Dev convenience: always show the raw detail outside production.
       const debugDetail =
-        process.env['OAUTH_DEBUG'] === 'true' ? detail?.slice(0, 200) : undefined;
+        process.env['OAUTH_DEBUG'] === 'true' || this.config.env !== 'production'
+          ? detail?.slice(0, 300)
+          : undefined;
       return {
         uid: claims.uid,
         ok: false,
