@@ -16,6 +16,7 @@ import type { NafUser } from '../../common/decorators/current-user.decorator';
 import { APP_CONFIG } from '../../config/config.module';
 import type { AppConfig } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 import { classifyOAuthError } from './oauth-error-classifier';
 import {
   PROVIDER_BINDINGS,
@@ -42,6 +43,7 @@ export class ConnectionsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly users: UsersService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -232,6 +234,10 @@ export class ConnectionsService {
       ...(quotaTotalBytes != null ? { quotaTotalBytes } : {}),
       ...(quotaUsedBytes != null ? { quotaUsedBytes } : {}),
     };
+
+    // Public route — the guard never ran, so provision the owner row first
+    // or the FK on provider_connections.user_id explodes.
+    await this.users.ensureUser({ id: userId });
 
     await this.prisma.providerConnection.upsert({
       where: { userId_providerType: { userId, providerType: toDbEnum(providerId) } },

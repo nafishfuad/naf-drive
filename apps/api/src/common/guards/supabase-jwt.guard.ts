@@ -4,6 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 import { APP_CONFIG } from '../../config/config.module';
 import type { AppConfig } from '../../config/env.schema';
+import { UsersService } from '../../modules/users/users.service';
 import type { NafUser } from '../decorators/current-user.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { Inject } from '@nestjs/common';
@@ -31,8 +32,12 @@ interface AuthedRequest {
  */
 @Injectable()
 export class SupabaseJwtGuard implements CanActivate {
+  /** Per-process memo so repeat requests skip the provisioning query. */
+  private readonly knownUsers = new Set<string>();
+
   constructor(
     private readonly reflector: Reflector,
+    private readonly users: UsersService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -70,6 +75,15 @@ export class SupabaseJwtGuard implements CanActivate {
         id: payload.sub,
         email: typeof payload['email'] === 'string' ? payload['email'] : undefined,
       };
+
+      // Auto-provision the local user row so FK-backed resources (connections,
+      // nodes, sessions) can never reference a missing owner. Idempotent upsert,
+      // memoized per process to keep the hot path at zero extra queries.
+      if (!this.knownUsers.has(request.nafUser.id)) {
+        await this.users.ensureUser(request.nafUser);
+        this.knownUsers.add(request.nafUser.id);
+      }
+
       return true;
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
