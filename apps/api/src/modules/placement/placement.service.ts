@@ -44,7 +44,7 @@ export class PlacementService {
       >`
         SELECT id, quota_total_bytes, quota_used_bytes, cap_pct, remote_root_folder
         FROM provider_connections
-        WHERE user_id = ${user.id} AND status = 'OK'
+        WHERE user_id = ${user.id}::uuid AND status = 'OK'
         FOR UPDATE`;
 
       if (input.parentId != null) {
