@@ -1,6 +1,9 @@
 // NAF Drive metadata database.
 // FILE BYTES NEVER LIVE HERE — only tree structure and provider pointers.
 // See PLAN.md §4 for the authoritative model description.
+//
+// Naming convention: tables/columns/enums are snake_case in Postgres via
+// @@map/@map — PlacementService's raw SQL depends on these exact names.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,6 +17,8 @@ datasource db {
 enum Role {
   USER
   ADMIN
+
+  @@map("role")
 }
 
 /// STANDARD = plain files in provider drives (default)
@@ -21,6 +26,8 @@ enum Role {
 enum StorageMode {
   STANDARD
   VAULT
+
+  @@map("storage_mode")
 }
 
 enum ProviderTypeEnum {
@@ -29,17 +36,23 @@ enum ProviderTypeEnum {
   ONEDRIVE
   PCLOUD
   BOX
+
+  @@map("provider_type")
 }
 
 enum ConnectionStatus {
   OK
   EXPIRED
   ERROR
+
+  @@map("connection_status")
 }
 
 enum NodeTypeEnum {
   FILE
   FOLDER
+
+  @@map("node_type")
 }
 
 enum NodeStatus {
@@ -47,12 +60,16 @@ enum NodeStatus {
   ACTIVE
   TRASHED
   DELETED /// purged
+
+  @@map("node_status")
 }
 
 enum LocationStatus {
   PENDING
   COMPLETE
   FAILED
+
+  @@map("location_status")
 }
 
 enum UploadSessionStatus {
@@ -61,180 +78,191 @@ enum UploadSessionStatus {
   COMPLETED
   EXPIRED
   CANCELLED
+
+  @@map("upload_session_status")
 }
 
 model User {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  supabaseUserId  String      @unique @db.Uuid
-  email           String?     
-  displayName     String?
-  storageMode     StorageMode @default(STANDARD)
-  role            Role        @default(USER)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supabaseUserId String   @unique @map("supabase_user_id") @db.Uuid
+  email          String?
+  displayName    String?  @map("display_name")
+  storageMode    StorageMode @default(STANDARD) @map("storage_mode")
+  role           Role     @default(USER)
 
   // Vault key material — always ciphertext/wrapped, produced client-side.
-  wrappedWithPassphrase Bytes?
-  wrappedWithPhrase     Bytes?
-  phraseCheckSha256     String? @db.Char(64)
-  vaultInitializedAt    DateTime?
+  wrappedWithPassphrase Bytes?    @map("wrapped_with_passphrase")
+  wrappedWithPhrase     Bytes?    @map("wrapped_with_phrase")
+  phraseCheckSha256     String?   @map("phrase_check_sha256") @db.Char(64)
+  vaultInitializedAt    DateTime? @map("vault_initialized_at")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  providerConnections ProviderConnection[]
-  nodes               Node[]
-  shares              Share[]
+  providerConnections ProviderConnection[] @relation("UserConnections")
+  nodes               Node[]               @relation("NodeOwner")
+  shares              Share[]              @relation("ShareOwner")
   uploadSessions      UploadSession[]
   activityLog         ActivityLog[]
   usageDaily          UsageDaily[]
+
+  @@map("users")
 }
 
 model ProviderConnection {
   id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String             @db.Uuid
-  providerType ProviderTypeEnum
-  displayName  String
+  userId       String             @map("user_id") @db.Uuid
+  providerType ProviderTypeEnum   @map("provider_type")
+  displayName  String             @map("display_name")
   /// AES-256-GCM envelope output over the OAuth token JSON. Never plaintext.
-  encryptedTokensJson Bytes
+  encryptedTokensJson Bytes        @map("encrypted_tokens_json")
 
   /// NAF Drive's home folder inside this account (google: folder id · dropbox: absolute path).
-  remoteRootFolder String?
+  remoteRootFolder String? @map("remote_root_folder")
 
   /// User-set usage cap for NAF Drive on this account (1–100).
-  capPct   Int              @default(100)
-  status   ConnectionStatus @default(OK)
+  capPct Int              @default(100) @map("cap_pct")
+  status ConnectionStatus @default(OK)
 
-  quotaTotalBytes BigInt?
-  quotaUsedBytes  BigInt?
-  lastSyncedAt    DateTime?
+  quotaTotalBytes BigInt? @map("quota_total_bytes")
+  quotaUsedBytes  BigInt? @map("quota_used_bytes")
+  lastSyncedAt    DateTime? @map("last_synced_at")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User            @relation("UserConnections", fields: [userId], references: [id], onDelete: Cascade)
   fileLocations   FileLocation[]
   uploadSessions  UploadSession[]
 
   @@unique([userId, providerType])
   @@index([userId])
+  @@map("provider_connections")
 }
 
 model Node {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  parentId String? @db.Uuid
-  ownerId  String @db.Uuid
+  parentId String? @map("parent_id") @db.Uuid
+  ownerId  String @map("owner_id") @db.Uuid
 
   type NodeTypeEnum
   name String
 
-  sizeBytes BigInt?
-  mimeType  String?
+  sizeBytes BigInt? @map("size_bytes")
+  mimeType  String? @map("mime_type")
 
   status    NodeStatus @default(STAGED)
-  deletedAt DateTime?
+  deletedAt DateTime? @map("deleted_at")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  parent    Node?           @relation("NodeTree", fields: [parentId], references: [id])
-  children  Node[]          @relation("NodeTree")
-  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parent    Node?          @relation("NodeTree", fields: [parentId], references: [id])
+  children  Node[]         @relation("NodeTree")
+  owner     User           @relation("NodeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   locations FileLocation[]
   uploadSessions UploadSession[]
   shares         Share[]
 
   @@index([ownerId, parentId, status])
+  @@map("nodes")
 }
 
 model FileLocation {
   id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nodeId       String @db.Uuid
-  connectionId String @db.Uuid
+  nodeId       String @map("node_id") @db.Uuid
+  connectionId String @map("connection_id") @db.Uuid
 
-  remoteFileId String
-  remotePath   String?
+  remoteFileId String  @map("remote_file_id")
+  remotePath   String? @map("remote_path")
 
-  sizeBytes        BigInt?
-  sha256Ciphertext String? @db.Char(64)
-  chunkIndex       Int     @default(0)
+  sizeBytes        BigInt? @map("size_bytes")
+  sha256Ciphertext String? @map("sha256_ciphertext") @db.Char(64)
+  chunkIndex       Int     @default(0) @map("chunk_index")
 
   status LocationStatus @default(PENDING)
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   node       Node               @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([nodeId])
+  @@map("file_locations")
 }
 
 model UploadSession {
   id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String @db.Uuid
-  nodeId       String @db.Uuid
-  connectionId String @db.Uuid
+  userId       String @map("user_id") @db.Uuid
+  nodeId       String @map("node_id") @db.Uuid
+  connectionId String @map("connection_id") @db.Uuid
 
-  targetRemoteFolder String?
-  totalBytes         BigInt
-  chunkSizeBytes     Int
-  receivedChunks     Json @default("[]")
+  targetRemoteFolder String? @map("target_remote_folder")
+  totalBytes         BigInt  @map("total_bytes")
+  chunkSizeBytes     Int     @map("chunk_size_bytes")
+  receivedChunks     Json    @default("[]") @map("received_chunks")
 
   status    UploadSessionStatus @default(ACTIVE)
   expiresAt DateTime
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   node       Node               @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+  @@map("upload_sessions")
 }
 
 model Share {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nodeId    String @db.Uuid
-  ownerId   String @db.Uuid
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nodeId  String @map("node_id") @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
 
-  tokenHash String @unique @db.Char(64) /// sha256 of share token; raw token never stored
-  passwordHash String?
+  tokenHash String  @unique @map("token_hash") @db.Char(64) /// sha256 of share token; raw token never stored
+  passwordHash String? @map("password_hash")
 
-  expiresAt     DateTime?
-  maxDownloads  Int?
-  downloadCount Int       @default(0)
-  revokedAt     DateTime?
+  expiresAt     DateTime? @map("expires_at")
+  maxDownloads  Int?      @map("max_downloads")
+  downloadCount Int       @default(0) @map("download_count")
+  revokedAt     DateTime? @map("revoked_at")
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner User @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([nodeId])
+  @@map("shares")
 }
 
 model ActivityLog {
   id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @db.Uuid
+  userId String @map("user_id") @db.Uuid
   action String
-  metaJson Json?
+  metaJson Json? @map("meta_json")
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@map("activity_log")
 }
 
 model UsageDaily {
   id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String   @db.Uuid
+  userId String   @map("user_id") @db.Uuid
   date   DateTime @db.Date
 
-  uploadBytes   BigInt @default(0)
-  downloadBytes BigInt @default(0)
-  apiRequests   Int    @default(0)
-  storageBytes  BigInt @default(0)
+  uploadBytes   BigInt @default(0) @map("upload_bytes")
+  downloadBytes BigInt @default(0) @map("download_bytes")
+  apiRequests   Int    @default(0) @map("api_requests")
+  storageBytes  BigInt @default(0) @map("storage_bytes")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+  @@map("usage_daily")
 }

@@ -115,6 +115,10 @@ main (protected: PR required, all checks green required, no direct push)
 - Secrets live ONLY in GitHub Actions secrets / Vercel dashboard — never in repo, never in code.
 - Renovate/Dependabot dependency PRs go through the same pipeline.
 - Never merge red; never bypass checks; hotfixes are branches too (`hotfix/x` → fast review).
+- **Never generate migration files with PowerShell `>` redirection** (writes UTF-16 + mangles
+  content). Use `cmd /c "… > file"` or the Write tool, then byte-verify (no BOM, no NULs).
+- DB naming law: snake_case tables/columns/enums via `@@map`/`@map` — PlacementService raw SQL
+  depends on it; any new model must follow.
 
 ### Transfer pipelines (memorize)
 
