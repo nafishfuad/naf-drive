@@ -96,6 +96,9 @@ model ProviderConnection {
   /// AES-256-GCM envelope output over the OAuth token JSON. Never plaintext.
   encryptedTokensJson Bytes
 
+  /// NAF Drive's home folder inside this account (google: folder id · dropbox: absolute path).
+  remoteRootFolder String?
+
   /// User-set usage cap for NAF Drive on this account (1–100).
   capPct   Int              @default(100)
   status   ConnectionStatus @default(OK)
@@ -111,6 +114,7 @@ model ProviderConnection {
   fileLocations   FileLocation[]
   uploadSessions  UploadSession[]
 
+  @@unique([userId, providerType])
   @@index([userId])
 }
 

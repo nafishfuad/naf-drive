@@ -1,4 +1,15 @@
-import { API_PATHS, type VaultStatusResponse } from '@naf/shared';
+import {
+  API_PATHS,
+  type ConnectionDto,
+  type DownloadTicketResponse,
+  type NodeDto,
+  type ProviderId,
+  type UploadCompleteRequest,
+  type UploadInitRequest,
+  type UploadInitResponse,
+  type UploadStatusResponse,
+  type VaultStatusResponse,
+} from '@naf/shared';
 
 import { createSupabaseBrowserClient } from './supabase/client';
 
@@ -26,7 +37,7 @@ async function bearerToken(): Promise<string> {
 
 export async function apiFetch<T>(
   path: string,
-  init: { method?: 'GET' | 'POST'; body?: unknown } = {},
+  init: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown } = {},
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: init.method ?? 'GET',
@@ -36,6 +47,8 @@ export async function apiFetch<T>(
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
+
+  if (res.status === 204) return undefined as T;
 
   if (!res.ok) {
     let code = 'REQUEST_FAILED';
@@ -55,6 +68,91 @@ export async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
+// ── vault ────────────────────────────────────────────────────────────────
 export function getVaultStatus(): Promise<VaultStatusResponse> {
   return apiFetch<VaultStatusResponse>(API_PATHS.vaultStatus);
+}
+
+// ── connections ──────────────────────────────────────────────────────────
+export function listConnections(): Promise<ConnectionDto[]> {
+  return apiFetch<ConnectionDto[]>(API_PATHS.connections);
+}
+
+export async function startConnect(providerId: ProviderId): Promise<void> {
+  const { authUrl } = await apiFetch<{ authUrl: string }>(
+    API_PATHS.connectionAuthUrl(providerId),
+  );
+  window.location.href = authUrl;
+}
+
+export function disconnectConnection(id: string): Promise<void> {
+  return apiFetch<void>(API_PATHS.connectionById(id), { method: 'DELETE' });
+}
+
+export function setConnectionCap(id: string, capPct: number): Promise<ConnectionDto> {
+  return apiFetch<ConnectionDto>(API_PATHS.connectionById(id), {
+    method: 'PATCH',
+    body: { capPct },
+  });
+}
+
+// ── nodes ────────────────────────────────────────────────────────────────
+export function listNodes(parentId: string | null): Promise<NodeDto[]> {
+  const qs = parentId == null ? '' : `?parentId=${encodeURIComponent(parentId)}`;
+  return apiFetch<NodeDto[]>(`${API_PATHS.nodes}${qs}`);
+}
+
+export function listTrash(): Promise<NodeDto[]> {
+  return apiFetch<NodeDto[]>(`${API_PATHS.nodes}?trash=true`);
+}
+
+export function createFolder(parentId: string | null, name: string): Promise<NodeDto> {
+  return apiFetch<NodeDto>(API_PATHS.nodes, { method: 'POST', body: { parentId, name } });
+}
+
+export function renameNode(id: string, name: string): Promise<NodeDto> {
+  return apiFetch<NodeDto>(API_PATHS.nodeById(id), { method: 'PATCH', body: { name } });
+}
+
+export function moveNode(id: string, parentId: string | null): Promise<NodeDto> {
+  return apiFetch<NodeDto>(API_PATHS.nodeById(id), { method: 'PATCH', body: { parentId } });
+}
+
+export function trashNode(id: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(API_PATHS.nodeTrash(id), { method: 'POST' });
+}
+
+export function restoreNode(id: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(API_PATHS.nodeRestore(id), { method: 'POST' });
+}
+
+export function purgeNode(id: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(API_PATHS.nodeById(id), { method: 'DELETE' });
+}
+
+// ── transfers ────────────────────────────────────────────────────────────
+export function initUpload(dto: UploadInitRequest): Promise<UploadInitResponse> {
+  return apiFetch<UploadInitResponse>(API_PATHS.uploadsInit, { method: 'POST', body: dto });
+}
+
+export function getUploadStatus(sessionId: string): Promise<UploadStatusResponse> {
+  return apiFetch<UploadStatusResponse>(API_PATHS.uploadById(sessionId));
+}
+
+export function completeUpload(
+  sessionId: string,
+  dto: UploadCompleteRequest,
+): Promise<{ nodeId: string }> {
+  return apiFetch<{ nodeId: string }>(API_PATHS.uploadComplete(sessionId), {
+    method: 'POST',
+    body: dto,
+  });
+}
+
+export function cancelUpload(sessionId: string): Promise<void> {
+  return apiFetch<void>(API_PATHS.uploadById(sessionId), { method: 'DELETE' });
+}
+
+export function getDownloadTicket(nodeId: string): Promise<DownloadTicketResponse> {
+  return apiFetch<DownloadTicketResponse>(API_PATHS.downloadTicket(nodeId));
 }

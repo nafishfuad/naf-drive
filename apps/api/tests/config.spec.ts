@@ -5,6 +5,7 @@ import { loadConfig } from '../src/config/env.schema';
 const baseEnv = {
   SUPABASE_URL: 'https://abc.supabase.co',
   DATABASE_URL: 'postgresql://naf:naf_dev@localhost:54322/naf_drive',
+  ENVELOPE_MASTER_KEY_B64: Buffer.alloc(32).toString('base64'),
 };
 
 describe('loadConfig', () => {

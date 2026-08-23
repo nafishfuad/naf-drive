@@ -6,7 +6,11 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SupabaseJwtGuard } from './common/guards/supabase-jwt.guard';
 import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ConnectionsModule } from './modules/connections/connections.module';
 import { HealthModule } from './modules/health/health.module';
+import { NodesModule } from './modules/nodes/nodes.module';
+import { PlacementModule } from './modules/placement/placement.module';
+import { TransfersModule } from './modules/transfers/transfers.module';
 import { UsersModule } from './modules/users/users.module';
 import { VaultModule } from './modules/vault/vault.module';
 
@@ -29,6 +33,10 @@ import { VaultModule } from './modules/vault/vault.module';
     HealthModule,
     UsersModule,
     VaultModule,
+    ConnectionsModule,
+    PlacementModule,
+    NodesModule,
+    TransfersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SupabaseJwtGuard },

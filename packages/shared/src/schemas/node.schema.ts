@@ -16,14 +16,38 @@ export const fileSizeBytesSchema = z
   .nonnegative()
   .lte(Number.MAX_SAFE_INTEGER);
 
-export const createNodeInputSchema = z
+export const createFolderInputSchema = z
   .object({
     parentId: uuidSchema.nullable(),
     name: displayNameSchema,
-    type: nodeTypeEnum,
-    mimeType: z.string().max(255).optional(),
-    sizeBytes: fileSizeBytesSchema.optional(),
   })
   .strict();
 
-export type CreateNodeInput = z.infer<typeof createNodeInputSchema>;
+export type CreateFolderInput = z.infer<typeof createFolderInputSchema>;
+
+export const renameNodeInputSchema = z
+  .object({
+    name: displayNameSchema,
+  })
+  .strict();
+
+export type RenameNodeInput = z.infer<typeof renameNodeInputSchema>;
+
+export const moveNodeInputSchema = z
+  .object({
+    parentId: uuidSchema.nullable(),
+  })
+  .strict();
+
+export type MoveNodeInput = z.infer<typeof moveNodeInputSchema>;
+
+/** Public node shape returned by list/get endpoints. */
+export interface NodeDto {
+  readonly id: string;
+  readonly parentId: string | null;
+  readonly name: string;
+  readonly type: NodeType;
+  readonly sizeBytes: number | null;
+  readonly mimeType?: string;
+  readonly updatedAt: string;
+}
