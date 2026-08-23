@@ -37,6 +37,25 @@ Copy apps/web/.env.example → apps/web/.env.local   # add your Supabase URL + a
 pnpm dev        # web on :3000 · api on :3001
 ```
 
+## Connecting Google Drive & Dropbox (Phase 1)
+
+### Google Drive
+1. [console.cloud.google.com](https://console.cloud.google.com) → New Project → name it
+2. **APIs & Services → Library** → search "Google Drive API" → **Enable**
+3. **OAuth consent screen** → External → fill app name/email → add scope `.../auth/drive.file` → add yourself as Test user
+4. **Credentials → Create credentials → OAuth client ID** → *Web application*
+   - Authorized redirect URI: `http://localhost:3001/v1/connections/callback/google-drive`
+5. Copy Client ID + Secret into `apps/api/.env`
+
+### Dropbox
+1. [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps) → **Create app**
+   - Type: **Scoped app** · Storage: **App folder** (recommended — hard-scoped to `Apps/NAF Drive`)
+2. Permissions tab: enable `files.content.read` + `files.content.write` → Submit
+3. Settings tab → Redirect URI: `http://localhost:3001/v1/connections/callback/dropbox`
+4. Copy App key + Secret into `apps/api/.env` as `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET`
+
+Then restart the API (`pnpm dev`) and use Settings → Connect.
+
 ## Verify the toolchain
 
 ```powershell

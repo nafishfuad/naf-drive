@@ -24,6 +24,13 @@ export interface ResumableUploadHandle {
   readonly sessionId: string;
   readonly chunkSizeBytes: number;
   readonly uploadedBytes: number;
+  readonly totalBytes: number;
+}
+
+export interface ChunkSendResult {
+  readonly handle: ResumableUploadHandle;
+  /** Present exactly when this chunk completed the upload — provider's file metadata. */
+  readonly committed?: FileEntry;
 }
 
 /**
@@ -50,13 +57,20 @@ export interface StorageProvider {
     mimeType?: string;
   }): Promise<ResumableUploadHandle>;
 
-  /** Uploads one chunk at `offsetBytes`; returns cumulative uploaded size. */
+  /**
+   * Sends the chunk at `offsetBytes`. `committed` is set on the final chunk —
+   * for Google that chunk IS the commit; Dropbox commits via finalizeUpload().
+   */
   uploadChunk(
     handle: ResumableUploadHandle,
     chunk: Uint8Array,
     offsetBytes: number,
-  ): Promise<ResumableUploadHandle>;
+  ): Promise<ChunkSendResult>;
 
+  /**
+   * Commits a finished session (Dropbox-style). No-op providers whose final
+   * chunk already commits may throw UNSUPPORTED or return the stat.
+   */
   finalizeUpload(handle: ResumableUploadHandle): Promise<FileEntry>;
 
   /** Inclusive start, exclusive end. Returns exactly `end - start` bytes on success. */

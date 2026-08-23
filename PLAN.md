@@ -123,17 +123,21 @@ Goal: runnable monorepo with auth and empty drive shell.
 ### Phase 1 — MVP: one real drive end-to-end (~4 weeks)
 Goal: browse/upload/download files between NAF Drive ↔ Google Drive ↔ Dropbox.
 
-- [ ] `packages/providers`: `StorageProvider` interface (listFolder, ensureFolder, createResumableSession, uploadChunk, downloadRange, stat, delete, getQuota) + GoogleDrive adapter + Dropbox adapter (official OAuth flows, PKCE where supported)
-- [ ] Settings → "Connect account": OAuth consent → tokens envelope-encrypted (AES-256-GCM) → row in provider_connections; disconnect revokes at provider
-- [ ] Quota sync worker: hourly getQuota → quota_cache_json; connection status badges
-- [ ] Placement Engine v1 + property-based tests (caps respected, largest-fit, no overflow under concurrency — reserve via Postgres transaction)
-- [ ] Upload pipeline: session create (Zod-validated) → mint ≤30-min scoped token → browser chunk+encrypt in Worker → direct resumable upload → completion endpoint writes nodes/file_locations atomically
-- [ ] Download pipeline: location map + token → parallel Range fetches → decrypt-on-stream → save-to-disk (File System Access API, blob fallback)
-- [ ] Drive UI: folder tree, breadcrumbs, grid/list toggle, virtualized listing, drag-drop multi-file upload with progress/pause/resume/cancel, rename/delete/move/copy, search-by-name, sort
-- [ ] Trash: soft-delete nodes, restore, 30-day purge worker
-- [ ] `naf-manifest.json` writer (debounced, per connection root) + reader
-- [ ] usage_daily counters; basic quota dashboard (per-account bar with cap% slider)
-- [ ] Playwright smoke: register→connect(mock HTTP provider)→upload→download→delete roundtrip
+- [x] `packages/providers`: `StorageProvider` interface + GoogleDrive adapter + Dropbox adapter (official OAuth, refresh flows, resumable uploads, Range downloads, quota) — isomorphic fetch-based so the BROWSER reuses them for direct transfers
+- [~] Settings → "Connect account": OAuth consent → tokens envelope-encrypted (AES-256-GCM) → provider_connections row; disconnect revokes at provider ← UI shipped; hourly quota re-sync pending
+- [ ] Quota sync worker: hourly getQuota → quota cache; connection status badges (manual sync happens at link-time today)
+- [x] Placement Engine v1 + property-based tests (caps respected, largest-fit, deterministic ties; reserve inside Postgres transaction with FOR UPDATE row locks)
+- [~] Upload pipeline: session create (Zod) → minted short-lived token → browser chunks DIRECTLY to provider via isomorphic adapter → completion endpoint writes nodes/file_locations atomically. Vault-mode encrypt step hooks in at unlock UX (next milestone)
+- [x] Download pipeline: ticket endpoint → parallel Range fetches → blob save
+- [~] Drive UI: breadcrumbs, grid/list, drag-drop multi-file upload with progress/pause/resume/cancel, rename/trash/restore/purge, search-by-name, connected-account quota strip ← move/copy + virtualized list pending
+- [~] Trash: soft-delete + restore + purge-with-remote-delete shipped; 30-day auto-purge worker pending
+- [ ] `naf-manifest.json` writer + reader
+- [x] usage_daily counters; per-account quota strip with cap% slider in Settings
+- [ ] Playwright smoke: register→connect→upload→download→delete roundtrip
+
+**Acceptance:** upload a 100MB file on flaky throttled network → pause/resume survives tab reload → file lands whole on chosen provider honoring caps; download decrypts correctly; manifest visible in the real Drive UI; zero file bytes observable hitting our API logs.
+
+**Remaining for Phase-1 close:** vault-unlock UX wiring the existing crypto into the upload path · quota-sync + trash-purge + manifest workers · Playwright e2e · virtualized long lists.
 
 **Acceptance:** upload a 100MB file on flaky throttled network → pause/resume survives tab reload → file lands whole on chosen provider honoring caps; download decrypts correctly; manifest visible in the real Drive UI; zero file bytes observable hitting our API logs.
 
