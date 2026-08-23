@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -22,7 +22,7 @@ export function AppShell({
           <button
             type="button"
             className="flex items-center gap-2 font-semibold"
-            onClick={() => router.push('/drive')}
+            onClick={() => router.push('/dashboard')}
           >
             <span className="grid size-7 place-items-center rounded-md bg-indigo-600 text-sm text-white">
               N
@@ -32,7 +32,7 @@ export function AppShell({
 
           <nav className="hidden items-center gap-1 sm:flex">
             <a
-              href="/drive"
+              href="/dashboard"
               className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               My Drive
@@ -52,12 +52,12 @@ export function AppShell({
             className="sm:hidden"
             onClick={() => setOpen((v) => !v)}
           >
-            ≡
+            â‰¡
           </button>
         </div>
         {open && (
           <nav className="flex flex-col gap-1 border-t border-zinc-200 p-3 sm:hidden dark:border-zinc-800">
-            <a href="/drive" className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100">
+            <a href="/dashboard" className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100">
               My Drive
             </a>
             <a href="/settings" className="rounded-md px-3 py-2 text-sm hover:bg-zinc-100">

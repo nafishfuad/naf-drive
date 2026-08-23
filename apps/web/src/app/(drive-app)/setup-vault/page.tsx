@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -92,7 +92,7 @@ export default function SetupVaultPage() {
     } catch (err) {
       setError(
         err instanceof Error
-          ? `Enabling Private Vault failed — ${err.message}`
+          ? `Enabling Private Vault failed â€” ${err.message}`
           : 'Enabling Private Vault failed unexpectedly.',
       );
     } finally {
@@ -111,13 +111,13 @@ export default function SetupVaultPage() {
           <CardHeader>
             <CardTitle>Enable Private Vault</CardTitle>
             <CardDescription>
-              From now on, everything you store through NAF Drive is encrypted in this browser —
+              From now on, everything you store through NAF Drive is encrypted in this browser â€”
               contents and even filenames on your connected drives. Your passphrase wraps the
               encryption key and is never sent to our servers.
             </CardDescription>
             <CardDescription>
-              ⚠️ If you ever forget this passphrase AND lose the recovery phrase shown next, your
-              encrypted data cannot be recovered by anyone — including us. This cannot be undone
+              âš ï¸ If you ever forget this passphrase AND lose the recovery phrase shown next, your
+              encrypted data cannot be recovered by anyone â€” including us. This cannot be undone
               for already-uploaded vault files.
             </CardDescription>
           </CardHeader>
@@ -144,7 +144,7 @@ export default function SetupVaultPage() {
               {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
               <Button type="submit" disabled={busy}>
-                {busy ? 'Generating keys… (a few seconds)' : 'Enable Private Vault'}
+                {busy ? 'Generating keysâ€¦ (a few seconds)' : 'Enable Private Vault'}
               </Button>
             </form>
           </CardContent>
@@ -187,8 +187,8 @@ export default function SetupVaultPage() {
               I have written my recovery phrase down and stored it safely.
             </label>
 
-            <Button disabled={!acknowledged} onClick={() => router.replace('/drive')}>
-              Finish — back to my drive
+            <Button disabled={!acknowledged} onClick={() => router.replace('/dashboard')}>
+              Finish â€” back to my drive
             </Button>
           </CardContent>
         </Card>

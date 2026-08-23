@@ -4,7 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-export const metadata = { title: 'My Drive' };
+export const metadata = { title: 'Dashboard' };
 
 export default async function DrivePage() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {

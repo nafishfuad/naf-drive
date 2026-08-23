@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -11,7 +11,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get('next') ?? '/drive';
+  const nextPath = searchParams.get('next') ?? '/dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,7 +111,7 @@ function LoginForm() {
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <Button type="submit" disabled={busy}>
-            {busy ? 'Signing in…' : pendingFactorId ? 'Verify code' : 'Sign in'}
+            {busy ? 'Signing inâ€¦' : pendingFactorId ? 'Verify code' : 'Sign in'}
           </Button>
 
           {!pendingFactorId && (

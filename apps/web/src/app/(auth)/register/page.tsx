@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export default function RegisterPage() {
       if (signUpError) throw signUpError;
 
       if (data.session) {
-        router.replace('/drive');
+        router.replace('/dashboard');
         return;
       }
       setNeedsConfirmation(true);
@@ -44,7 +44,7 @@ export default function RegisterPage() {
         <CardHeader>
           <CardTitle>Create your account</CardTitle>
           <CardDescription>
-            You&apos;ll land straight in your drive — connect your cloud accounts next. A Private
+            You&apos;ll land straight in your drive â€” connect your cloud accounts next. A Private
             Vault (optional encryption) can be enabled anytime from Settings.
           </CardDescription>
         </CardHeader>
@@ -80,7 +80,7 @@ export default function RegisterPage() {
               {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
               <Button type="submit" disabled={busy}>
-                {busy ? 'Creating…' : 'Create account'}
+                {busy ? 'Creatingâ€¦' : 'Create account'}
               </Button>
 
               <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">

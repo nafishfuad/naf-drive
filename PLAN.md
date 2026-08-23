@@ -109,7 +109,8 @@ Goal: runnable monorepo with auth and empty drive shell.
 - [x] Prisma schema for all tables above + migrations (`0_init` generated); seed script
 - [ ] Supabase project: enable email confirmations, TOTP MFA, backup-email flow design doc ← **owner action: create free project, put URL+anon key into `.env.local`**
 - [x] `apps/api`: NestJS bootstrap, config module with zod-env, Supabase JWT guard, health endpoint, structured logging (pino), global error filter (RFC7807 shape)
-- [x] `apps/web`: Next.js shell, Tailwind, route structure (/drive, /settings, /setup-vault), auth screens wired to Supabase SDK (login + TOTP challenge), protected routes middleware
+- [x] `apps/web`: Next.js shell, Tailwind, route structure (/dashboard, /settings, /setup-vault), auth screens wired to Supabase SDK (login + TOTP challenge), protected routes middleware
+- [x] Route split: SEO landing page at `/` (features, tiers, FAQ, JSON-LD, robots/sitemap/OG image) + authenticated app at `/dashboard`
 - [x] Vault key ceremony: Master Key generated client-side → wrapped with Argon2id(Vault Passphrase) → stored as ciphertext envelopes; Recovery Phrase shown once; wrap/unwrap roundtrip covered by unit tests (7 passing)
 - [x] CI — `.github/workflows/ci.yml`: on every PR run lint → typecheck → unit tests → build → `pnpm audit`; Turborepo filters so only affected apps rebuild
 - [ ] Branch protection on `main`: PR required, all status checks required, no direct push, no force push ← **owner action after first push to GitHub**
