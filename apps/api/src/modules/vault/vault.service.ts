@@ -39,6 +39,7 @@ export class VaultService {
       where: { supabaseUserId: user.id },
       update: { ...data, storageMode: 'VAULT' },
       create: {
+        id: user.id,
         supabaseUserId: user.id,
         email: user.email ?? null,
         storageMode: 'VAULT',

@@ -27,7 +27,7 @@ CREATE TYPE "upload_session_status" AS ENUM ('ACTIVE', 'COMPLETING', 'COMPLETED'
 
 -- CreateTable
 CREATE TABLE "users" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" UUID NOT NULL,
     "supabase_user_id" UUID NOT NULL,
     "email" TEXT,
     "display_name" TEXT,

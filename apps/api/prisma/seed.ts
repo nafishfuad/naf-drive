@@ -13,6 +13,7 @@ async function main(): Promise<void> {
     where: { supabaseUserId: demoSupabaseId },
     update: {},
     create: {
+      id: demoSupabaseId,
       supabaseUserId: demoSupabaseId,
       email: 'demo@nafdrive.local',
       displayName: 'Demo User',

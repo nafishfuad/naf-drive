@@ -9,17 +9,46 @@ export class UsersService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Idempotent: creates the local row the first time an authenticated user appears. */
+  /**
+   * Idempotent provisioning. The local PK mirrors the auth UID so every
+   * domain FK (owner_id / user_id) can use the value carried in the JWT.
+   *
+   * Legacy rows created before the PK-alignment change hold a random id —
+   * they own nothing by construction (FKs used to fail), so we safely
+   * recreate them under the aligned key.
+   */
   async ensureUser(user: NafUser) {
-    return this.prisma.user.upsert({
+    const existing = await this.prisma.user.findUnique({
       where: { supabaseUserId: user.id },
-      update: {},
-      create: {
-        supabaseUserId: user.id,
-        email: user.email ?? null,
-        storageMode: 'STANDARD',
-        role: 'USER',
-      },
     });
+
+    if (!existing) {
+      return this.prisma.user.create({
+        data: {
+          id: user.id,
+          supabaseUserId: user.id,
+          email: user.email ?? null,
+          storageMode: 'STANDARD',
+          role: 'USER',
+        },
+      });
+    }
+
+    if (existing.id !== user.id) {
+      this.logger.warn(`Realigning legacy user row ${existing.id} → ${user.id}`);
+      await this.prisma.user.delete({ where: { id: existing.id } });
+      return this.prisma.user.create({
+        data: {
+          id: user.id,
+          supabaseUserId: user.id,
+          email: existing.email ?? (user.email ?? null),
+          displayName: existing.displayName,
+          storageMode: existing.storageMode,
+          role: existing.role,
+        },
+      });
+    }
+
+    return existing;
   }
 }

@@ -83,7 +83,8 @@ enum UploadSessionStatus {
 }
 
 model User {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// PK == Supabase auth UID: one identity across auth and domain tables.
+  id             String   @id @db.Uuid
   supabaseUserId String   @unique @map("supabase_user_id") @db.Uuid
   email          String?
   displayName    String?  @map("display_name")
