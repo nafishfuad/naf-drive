@@ -67,7 +67,8 @@ export class ConnectionsController {
     }
     const result = await this.connections.handleCallback(parsed.data, code, state);
     if (!result.ok) {
-      return res.redirect(`${web}/settings?error=${encodeURIComponent(result.errorCode ?? 'failed')}`);
+      const reason = result.reason ? `&reason=${encodeURIComponent(result.reason)}` : '';
+      return res.redirect(`${web}/settings?error=${encodeURIComponent(result.errorCode ?? 'failed')}${reason}`);
     }
     return res.redirect(`${web}/settings?connected=${parsed.data}`);
   }

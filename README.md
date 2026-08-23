@@ -56,6 +56,21 @@ pnpm dev        # web on :3000 · api on :3001
 
 Then restart the API (`pnpm dev`) and use Settings → Connect.
 
+### OAuth troubleshooting
+
+The settings banner shows a `[reason]` tag on failure. The API terminal logs
+the full provider payload at the same moment (pino line: `OAuth callback failed …`).
+Set `OAUTH_DEBUG=true` in `apps/api/.env` to also surface the raw detail in the UI.
+
+| Reason | Meaning → Fix |
+|---|---|
+| `redirect_uri_mismatch` | Console redirect URI ≠ `${API_PUBLIC_URL}/v1/connections/callback/<provider>`. Exact string, no trailing slash |
+| `invalid_client` | Wrong Client ID/Secret pair — re-copy both |
+| `invalid_grant` | Code expired/used — click Connect again |
+| `access_denied` | You declined consent — or Google Testing mode: add yourself as Test user |
+| `no_refresh_token` | Re-run connect; ensure `prompt=consent` flow completed (we send it) |
+| `api_disabled` | Google Cloud → enable **Drive API** for that project |
+
 ## Verify the toolchain
 
 ```powershell

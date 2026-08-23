@@ -23,8 +23,9 @@ export function ConnectionsPanel() {
   useEffect(() => {
     const connected = searchParams.get('connected');
     const error = searchParams.get('error');
+    const reason = searchParams.get('reason');
     if (connected) setBanner({ ok: true, text: `${labelFor(connected)} connected successfully.` });
-    if (error) setBanner({ ok: false, text: `Connection failed: ${prettyError(error)}` });
+    if (error) setBanner({ ok: false, text: `Connection failed: ${prettyError(error, reason)}` });
   }, [searchParams]);
 
   const connectionsQuery = useQuery({ queryKey: ['connections'], queryFn: listConnections });
@@ -138,19 +139,32 @@ function labelFor(providerId: string): string {
   return providerId === 'google-drive' ? 'Google Drive' : providerId === 'dropbox' ? 'Dropbox' : providerId;
 }
 
-function prettyError(code: string): string {
-  switch (code) {
-    case 'access_denied':
-      return 'You declined the permission prompt.';
-    case 'bad_state':
-      return 'The link expired — please try connecting again.';
-    case 'exchange_failed':
-      return 'Token exchange with the provider failed.';
-    case 'missing_params':
-      return 'The provider callback was incomplete.';
-    default:
-      return code;
+function prettyError(code: string, reason?: string | null): string {
+  const known: Record<string, string> = {
+    redirect_uri_mismatch:
+      'Redirect URI mismatch — the value in the provider console must EXACTLY equal the API_PUBLIC_URL-based callback (see README).',
+    invalid_client:
+      'Client ID/Secret rejected — re-copy both values and restart the API.',
+    invalid_grant:
+      'Authorization code expired or already used — click Connect again.',
+    no_refresh_token:
+      'Provider returned no refresh token — disconnect, then connect again (re-consent).',
+    api_disabled:
+      'Enable the provider API first: Google Cloud → APIs & Services → Drive API → Enable.',
+    provider_api_error:
+      'Provider rejected a post-link call (root folder/quota) — check API logs for detail.',
+    access_denied: 'You declined the permission prompt.',
+    bad_state: 'The link expired — try connecting again.',
+  };
+  if (reason && known[reason]) return `${known[reason]} [${reason}]`;
+  if (code === 'access_denied') return 'You declined the permission prompt.';
+  if (code === 'bad_state') return 'The link expired — please try connecting again.';
+  if (code === 'exchange_failed') {
+    return reason
+      ? `Provider said: ${reason} — see README troubleshooting table.`
+      : 'Token exchange failed — check the API terminal log for the raw provider error.';
   }
+  return code;
 }
 
 function capBytes(c: Pick<ConnectionDto, 'quotaTotalBytes' | 'capPct'>): number {
