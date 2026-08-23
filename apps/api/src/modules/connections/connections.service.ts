@@ -16,6 +16,7 @@ import type { NafUser } from '../../common/decorators/current-user.decorator';
 import { APP_CONFIG } from '../../config/config.module';
 import type { AppConfig } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
+import { classifyOAuthError } from './oauth-error-classifier';
 import {
   PROVIDER_BINDINGS,
   SUPPORTED_PROVIDER_IDS,
@@ -73,7 +74,7 @@ export class ConnectionsService {
     providerId: ProviderId,
     code: string | undefined,
     state: string | undefined,
-  ): Promise<{ uid: string; ok: boolean; errorCode?: string }> {
+  ): Promise<{ uid: string; ok: boolean; errorCode?: string; reason?: string }> {
     if (!code || !state) return { uid: '', ok: false, errorCode: 'missing_params' };
 
     let claims: ConnectionStateClaims;
@@ -95,8 +96,20 @@ export class ConnectionsService {
       if (!tokens.refreshToken) throw new Error('provider returned no refresh_token');
       return { uid: claims.uid, ok: true };
     } catch (err) {
-      this.logger.error(`OAuth callback failed (${providerId}): ${String(err)}`);
-      return { uid: claims.uid, ok: false, errorCode: 'exchange_failed' };
+      const { code: reasonCode, detail } = classifyOAuthError(err);
+      // Full stack + detail stays server-side; only the short reason reaches the UI.
+      this.logger.error(
+        `OAuth callback failed (${providerId}) stage=${reasonCode} detail=${detail ?? 'n/a'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      const debugDetail =
+        process.env['OAUTH_DEBUG'] === 'true' ? detail?.slice(0, 200) : undefined;
+      return {
+        uid: claims.uid,
+        ok: false,
+        errorCode: 'exchange_failed',
+        reason: debugDetail ?? reasonCode,
+      };
     }
   }
 
