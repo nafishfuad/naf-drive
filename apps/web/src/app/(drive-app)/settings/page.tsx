@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 export const metadata = { title: 'Settings' };
 
 export default async function SettingsPage() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) redirect('/drive');
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) redirect('/dashboard');
 
   const supabase = await createSupabaseServerClient();
   const {

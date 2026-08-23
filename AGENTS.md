@@ -58,7 +58,8 @@ naf-drive/
 ├── apps/
 │   ├── web/                  # FRONTEND — Next.js (Vercel)
 │   │   └── src/
-│   │       ├── app/          # App Router routes; route groups: (auth) (drive) settings admin
+│   │       ├── app/          # Routes: / (SEO landing) · (auth)/login·register · auth/callback
+│   │                        # · (drive-app)/dashboard·settings·setup-vault · robots/sitemap/OG
 │   │       ├── components/   # ui/ · features/ · layout/
 │   │       ├── hooks/
 │   │       ├── lib/          # api client, auth helpers, query providers

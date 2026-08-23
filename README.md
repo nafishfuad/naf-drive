@@ -46,7 +46,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ## Repository map
 
 ```
-apps/web            Next.js UI (auth, /drive, /settings, vault ceremony)
+apps/web            Next.js UI (SEO landing at /, auth, dashboard at /dashboard, settings)
 apps/api            NestJS REST API (/health, /v1/vault/*), Prisma schema
 packages/shared     Zod schemas + TS contracts shared by every app
 packages/providers  StorageProvider port — one adapter per cloud (Phase 1+)

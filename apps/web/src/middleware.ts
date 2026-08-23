@@ -1,8 +1,8 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+﻿import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PROTECTED_PREFIXES = ['/drive', '/settings', '/setup-vault'];
-const AUTH_PAGES = ['/login', '/register'];
+const PROTECTED_PREFIXES = ['/dashboard', '/settings', '/setup-vault'];
+const AUTHED_REDIRECTS = ['/', '/login', '/register'];
 
 function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // getUser() revalidates the token server-side — never trust the cookie alone.
+  // getUser() revalidates the token server-side â€” never trust the cookie alone.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -46,9 +46,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && AUTH_PAGES.includes(pathname)) {
+  if (user && AUTHED_REDIRECTS.includes(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = '/drive';
+    url.pathname = '/dashboard';
     url.search = '';
     return NextResponse.redirect(url);
   }
